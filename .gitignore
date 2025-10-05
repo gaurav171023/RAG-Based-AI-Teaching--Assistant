@@ -27,6 +27,11 @@ videos/
 *.wav
 *.flac
 
+# sample media folders (don't push)
+RAG-assistance/1758903138109-rag_sample-videos/
+RAG-assistance/1758903342221-rag_all_audios/
+
+
 # Model / vector files
 *.joblib
 embeddings.joblib
