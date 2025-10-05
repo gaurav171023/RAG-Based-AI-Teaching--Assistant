@@ -1,0 +1,7 @@
+You're referring to the CSS Box Model video in your Sigma web development course. The box model is taught from the beginning of the video (at timestamp 0 seconds) and covers a brief introduction to what the box model is. 
+
+The main content of the box model is covered later on in the video, starting at approximately 102 seconds (around 1 minute and 42 seconds into the video). At this point, the instructor explains how the box model works with styles applied to an element.
+
+To get a more detailed explanation of the CSS Box Model, including its components such as margins, padding, and borders, I recommend watching Video #18 from the start at around 315 seconds (about 5 minutes into the video). The instructor will provide a step-by-step breakdown of how these elements interact within the box model.
+
+If you have any further questions about CSS or this specific topic, feel free to ask.

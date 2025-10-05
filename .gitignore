@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# IDEs
+.vscode/
+*.swp
+*.swn
+Thumbs.db
+.DS_Store
+
+# Audio / video / large data
+audios/
+videos/
+*.mp3
+*.wav
+*.flac
+
+# Model / vector files
+*.joblib
+embeddings.joblib
+tfidf_vectorizer.joblib
+
+# OneDrive / OS
+.one/ 

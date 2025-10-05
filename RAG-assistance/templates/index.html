@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Course Assistant — Chat</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <div class="chat-app">
+      <header>
+        <h1>Course Assistant</h1>
+        <p class="subtitle">Ask questions about your course videos — powered by local retrieval</p>
+      </header>
+      <main id="chat">
+        <div class="messages" id="messages"></div>
+      </main>
+      <form id="composer" autocomplete="off">
+        <input id="question" placeholder="Ask: where is HTML concluded in this course?"/>
+        <button type="submit">Send</button>
+      </form>
+      <footer>
+        <small>Local demo — uses tf-idf retrieval over your course transcripts.</small>
+      </footer>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
