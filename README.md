@@ -74,14 +74,9 @@ python .\stt.py
 - Model load OOM: select a smaller Whisper model or run on a machine with more RAM/GPU.
 - Pushing large files fails: remove them from commits or enable Git LFS before committing.
 
-## Contributing
-- Open issues or PRs for bug reports and enhancements.
-- Do not commit large media files directly; use Git LFS or provide download instructions.
 
-## License
-- Add a LICENSE file if you have a preferred license. Default: no license in this repo.
 
-## Notes for maintainers
-- To show git-ignored files in VS Code Explorer: disable "Explorer: Exclude Git Ignored Files" in settings.
-- To add large media safely:
-  - Install git-lfs, run `git lfs track "<pattern>"`, commit `.gitattributes`, then add & push media.
+
+
+
+
