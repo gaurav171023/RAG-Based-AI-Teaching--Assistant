@@ -6,18 +6,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates', static_folder='static')
+
+# Get the directory where app.py is located
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+EMBEDDINGS_PATH = os.path.join(APP_DIR, 'embeddings.joblib')
+VEC_PATH = os.path.join(APP_DIR, 'tfidf_vectorizer.joblib')
 
 # Load embeddings joblib (expects a DataFrame with columns: title, number, start, end, text, embedding)
-if not os.path.exists('embeddings.joblib'):
-    raise SystemExit('embeddings.joblib not found in repository root. Please place it here before running the web app.')
+if not os.path.exists(EMBEDDINGS_PATH):
+    raise SystemExit(f'embeddings.joblib not found at {EMBEDDINGS_PATH}. Please place it here before running the web app.')
 
-df = joblib.load('embeddings.joblib')
+df = joblib.load(EMBEDDINGS_PATH)
 if df.empty:
     raise SystemExit('embeddings.joblib is empty.')
 
 # Prepare TF-IDF vectorizer for fast, local similarity retrieval
-VEC_PATH = 'tfidf_vectorizer.joblib'
 if os.path.exists(VEC_PATH):
     vec = joblib.load(VEC_PATH)
 else:

@@ -1,0 +1,13 @@
+# Minimal Python packages needed to run the scripts in this repo
+# Install with: pip install -r requirements.txt
+openai-whisper
+torch
+pandas
+scikit-learn
+joblib
+requests
+numpy
+librosa
+soundfile
+Flask
+gunicorn
