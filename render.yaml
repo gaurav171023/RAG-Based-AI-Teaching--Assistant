@@ -11,6 +11,6 @@ services:
       - key: PYTHON_VERSION
         value: "3.10"
       - key: EMBEDDINGS_URL
-        value: ""
+        value: "https://drive.google.com/uc?export=download&id=1k11N6Kcso7uT1aDJJsxEgRmd-DcapgZl"
       - key: TFIDF_VECTORIZER_URL
-        value: ""
+        value: "https://drive.google.com/uc?export=download&id=1CG9IsIcZIvDj8LAGpVt7LH5mkdqfTJmW"
