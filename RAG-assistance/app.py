@@ -26,28 +26,37 @@ def _download_if_missing(path, url, max_retries=3):
     
     for attempt in range(max_retries):
         try:
-            # Try gdown first for Google Drive URLs (more reliable)
-            if HAS_GDOWN and 'drive.google.com' in url:
-                # Extract file_id from various Google Drive URL formats
+            # Extract file_id for Google Drive URLs
+            file_id = None
+            if 'drive.google.com' in url:
                 if '&id=' in url:
                     file_id = url.split('&id=')[1].split('&')[0]
                 elif '/d/' in url:
                     file_id = url.split('/d/')[1].split('/')[0]
-                else:
-                    file_id = None
-                
-                if file_id:
-                    print(f"Using gdown to download {file_id}...")
-                    gdown.download(f"https://drive.google.com/uc?id={file_id}", path, quiet=False)
-                    print(f"Download complete: {os.path.basename(path)}")
-                    return
             
-            # Fallback to manual Google Drive download or standard HTTP
-            if 'drive.google.com' in url:
-                file_id = url.split('&id=')[1].split('&')[0] if '&id=' in url else url.split('/d/')[1].split('/')[0]
+            # Try gdown first for Google Drive URLs (more reliable)
+            if HAS_GDOWN and file_id:
+                print(f"Attempt {attempt + 1}/{max_retries}: Using gdown for file {file_id}...")
+                try:
+                    # gdown.download returns the path if successful
+                    result = gdown.download(f"https://drive.google.com/uc?id={file_id}", path, quiet=False)
+                    if result and os.path.exists(path):
+                        size_mb = os.path.getsize(path) / (1024 * 1024)
+                        print(f"✓ Download complete: {os.path.basename(path)} ({size_mb:.1f}MB)")
+                        return
+                except Exception as gdown_err:
+                    print(f"  gdown failed: {gdown_err}, falling back to manual download...")
+            
+            # Fallback to manual Google Drive download
+            if file_id:
                 _download_from_google_drive(file_id, path)
+                if os.path.exists(path):
+                    size_mb = os.path.getsize(path) / (1024 * 1024)
+                    print(f"✓ Download complete: {os.path.basename(path)} ({size_mb:.1f}MB)")
+                    return
             else:
-                # Standard HTTP download
+                # Standard HTTP download for non-Google Drive URLs
+                print(f"Attempt {attempt + 1}/{max_retries}: Direct HTTP download...")
                 session = requests.Session()
                 session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
                 resp = session.get(url, stream=True, timeout=120, allow_redirects=True, verify=False)
@@ -62,12 +71,15 @@ def _download_if_missing(path, url, max_retries=3):
                             f.write(chunk)
                             downloaded += len(chunk)
                             if total_size > 0 and downloaded % (1024 * 1024 * 25) == 0:
-                                print(f"Downloaded {downloaded / (1024*1024):.1f}MB / {total_size / (1024*1024):.1f}MB")
+                                print(f"  Downloaded {downloaded / (1024*1024):.1f}MB / {total_size / (1024*1024):.1f}MB")
+                
+                if os.path.exists(path):
+                    size_mb = os.path.getsize(path) / (1024 * 1024)
+                    print(f"✓ Download complete: {os.path.basename(path)} ({size_mb:.1f}MB)")
+                    return
             
-            print(f"Download complete: {os.path.basename(path)}")
-            return
         except Exception as e:
-            print(f"Download attempt {attempt + 1}/{max_retries} failed: {e}")
+            print(f"  Download attempt {attempt + 1}/{max_retries} failed: {str(e)[:100]}")
             if os.path.exists(path):
                 try:
                     os.remove(path)
@@ -75,10 +87,10 @@ def _download_if_missing(path, url, max_retries=3):
                     pass
             if attempt < max_retries - 1:
                 wait_time = 5 * (attempt + 1)
-                print(f"Retrying in {wait_time} seconds...")
+                print(f"  Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
             else:
-                print(f"All download attempts failed for {os.path.basename(path)}")
+                print(f"✗ All download attempts failed for {os.path.basename(path)}")
                 raise
 
 

@@ -74,8 +74,14 @@ def ensure_files_exist():
 
 if __name__ == '__main__':
     if ensure_files_exist():
-        print("\nStarting Gunicorn...")
+        port = os.environ.get('PORT', '8000')
+        print(f"\nStarting Gunicorn on port {port}...")
         # Re-exec into gunicorn (replace current process)
-        os.execvp('gunicorn', ['gunicorn', 'wsgi:app', '--bind', f'0.0.0.0:{os.environ.get("PORT", 8000)}', '--workers', '1'])
+        try:
+            os.execvp('gunicorn', ['gunicorn', 'wsgi:app', '--bind', f'0.0.0.0:{port}', '--workers', '1', '--timeout', '120'])
+        except Exception as e:
+            print(f"Error starting Gunicorn: {e}")
+            sys.exit(1)
     else:
+        print("Pre-flight check failed. Exiting.")
         sys.exit(1)
