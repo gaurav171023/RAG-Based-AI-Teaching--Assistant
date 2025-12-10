@@ -12,13 +12,36 @@ def _download_if_missing(path, url):
     """Download a file from url to path if it doesn't exist."""
     if os.path.exists(path) or not url:
         return
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    resp = requests.get(url, stream=True, timeout=300)
+    
+    print(f"Downloading {os.path.basename(path)} from {url}...")
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    
+    # Handle Google Drive direct download with confirmation bypass
+    session = requests.Session()
+    resp = session.get(url, stream=True, timeout=600)
+    
+    # Check if this is the virus scan confirmation page
+    for key, value in resp.cookies.items():
+        if key.startswith('download_warning'):
+            # Get the actual download link with confirmation
+            params = {'confirm': value}
+            resp = session.get(url, params=params, stream=True, timeout=600)
+            break
+    
     resp.raise_for_status()
+    total_size = int(resp.headers.get('content-length', 0))
+    downloaded = 0
+    
     with open(path, 'wb') as f:
         for chunk in resp.iter_content(chunk_size=8192):
             if chunk:
                 f.write(chunk)
+                downloaded += len(chunk)
+                if total_size > 0 and downloaded % (1024 * 1024 * 10) == 0:  # Log every 10MB
+                    print(f"Downloaded {downloaded / (1024*1024):.1f}MB / {total_size / (1024*1024):.1f}MB")
+    
+    print(f"Download complete: {os.path.basename(path)} ({downloaded / (1024*1024):.1f}MB)")
+
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
