@@ -5,6 +5,20 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
+import requests
+
+
+def _download_if_missing(path, url):
+    """Download a file from url to path if it doesn't exist."""
+    if os.path.exists(path) or not url:
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    resp = requests.get(url, stream=True, timeout=300)
+    resp.raise_for_status()
+    with open(path, 'wb') as f:
+        for chunk in resp.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -12,6 +26,10 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 EMBEDDINGS_PATH = os.path.join(APP_DIR, 'embeddings.joblib')
 VEC_PATH = os.path.join(APP_DIR, 'tfidf_vectorizer.joblib')
+
+# Optionally download large artifacts if provided via environment URLs
+_download_if_missing(EMBEDDINGS_PATH, os.getenv('EMBEDDINGS_URL'))
+_download_if_missing(VEC_PATH, os.getenv('TFIDF_VECTORIZER_URL'))
 
 # Load embeddings joblib (expects a DataFrame with columns: title, number, start, end, text, embedding)
 if not os.path.exists(EMBEDDINGS_PATH):
