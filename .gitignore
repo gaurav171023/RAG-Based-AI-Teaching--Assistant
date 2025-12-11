@@ -32,10 +32,9 @@ RAG-assistance/1758903138109-rag_sample-videos/
 RAG-assistance/1758903342221-rag_all_audios/
 
 
-# Model / vector files
-*.joblib
-embeddings.joblib
-tfidf_vectorizer.joblib
+# Model / vector files (exclude large models, but allow critical embeddings)
+# Note: embeddings.joblib and tfidf_vectorizer.joblib are committed for Render deployment
+# *.joblib
 
 # OneDrive / OS
 .one/ 

@@ -6,11 +6,4 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python preflight.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.10"
-      - key: EMBEDDINGS_URL
-        value: "https://drive.google.com/uc?export=download&id=1k11N6Kcso7uT1aDJJsxEgRmd-DcapgZl"
-      - key: TFIDF_VECTORIZER_URL
-        value: "https://drive.google.com/uc?export=download&id=1CG9IsIcZIvDj8LAGpVt7LH5mkdqfTJmW"
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT

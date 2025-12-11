@@ -134,19 +134,6 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 EMBEDDINGS_PATH = os.path.join(APP_DIR, 'embeddings.joblib')
 VEC_PATH = os.path.join(APP_DIR, 'tfidf_vectorizer.joblib')
 
-# Optionally download large artifacts if provided via environment URLs
-embeddings_url = os.getenv('EMBEDDINGS_URL')
-tfidf_url = os.getenv('TFIDF_VECTORIZER_URL')
-
-try:
-    if embeddings_url:
-        _download_if_missing(EMBEDDINGS_PATH, embeddings_url)
-    if tfidf_url:
-        _download_if_missing(VEC_PATH, tfidf_url)
-except Exception as e:
-    print(f"Warning: Could not download artifacts: {e}")
-    print("Continuing without pre-downloaded files...")
-
 # Load embeddings joblib (expects a DataFrame with columns: title, number, start, end, text, embedding)
 if not os.path.exists(EMBEDDINGS_PATH):
     print(f'ERROR: embeddings.joblib not found at {EMBEDDINGS_PATH}')
