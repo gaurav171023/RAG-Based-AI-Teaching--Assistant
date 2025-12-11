@@ -8,7 +8,7 @@ setuptools==68.2.2
 wheel==0.40.0
 openai-whisper==20230314
 pandas==2.1.4
-scikit-learn==1.3.2
+scikit-learn==1.6.1
 joblib==1.3.2
 requests==2.31.0
 numpy==1.26.4
