@@ -7,9 +7,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 import re
 import requests
 import time
-import importlib.util
 
-HAS_GDOWN = importlib.util.find_spec('gdown') is not None
+try:
+    import gdown
+    HAS_GDOWN = True
+except ImportError:
+    HAS_GDOWN = False
 
 
 
@@ -35,9 +38,8 @@ def _download_if_missing(path, url, max_retries=3):
             if HAS_GDOWN and file_id:
                 print(f"Attempt {attempt + 1}/{max_retries}: Using gdown for file {file_id}...")
                 try:
-                    gdown_module = importlib.import_module('gdown')
                     # gdown.download returns the path if successful
-                    result = gdown_module.download(f"https://drive.google.com/uc?id={file_id}", path, quiet=False)
+                    result = gdown.download(f"https://drive.google.com/uc?id={file_id}", path, quiet=False)
                     if result and os.path.exists(path):
                         size_mb = os.path.getsize(path) / (1024 * 1024)
                         print(f"✓ Download complete: {os.path.basename(path)} ({size_mb:.1f}MB)")
@@ -157,11 +159,8 @@ else:
 
 doc_tfidf = vec.transform(df['text'].astype(str).tolist())
 
-OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://localhost:11434')
-OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'llama3.2:1b')
 
-
-def _retrieve_chunks(query, top_k=5):
+def answer_question(query, top_k=5):
     qv = vec.transform([query])
     sims = cosine_similarity(doc_tfidf, qv).flatten()
     idx = sims.argsort()[::-1][:top_k]
@@ -178,86 +177,25 @@ def _retrieve_chunks(query, top_k=5):
             'link': None
         })
 
+    # try to fill in links
     for r in results:
-        r['link'] = find_video_link(r['number'], r['title'])
+        link = find_video_link(r['number'], r['title'])
+        r['link'] = link
 
-    return results
-
-
-def _format_context(results):
+    # Compose a short human-friendly answer: say which videos and timestamps to check
     if not results:
-        return 'No retrieved context was found.'
-
-    lines = []
-    for idx, r in enumerate(results, start=1):
-        lines.append(
-            f"[{idx}] Video {r['number']} - {r['title']} @ {int(r['start'])}s to {int(r['end'])}s\n"
-            f"    Score: {r['score']:.4f}\n"
-            f"    Text: {r['text']}"
-        )
-    return '\n\n'.join(lines)
-
-
-def _build_prompt(query, results):
-    context = _format_context(results)
-    return (
-        'You are a course assistant for a web development video course. '
-        'Answer the user only using the retrieved context below. '
-        'If the context does not contain enough information, say that the answer cannot be found in the course materials. '
-        'Always mention the relevant video number/title and timestamps when applicable.\n\n'
-        f'RETRIEVED CONTEXT:\n{context}\n\n'
-        f'USER QUESTION:\n{query}\n\n'
-        'Answer in a clear, helpful way grounded only in the retrieved context.'
-    )
-
-
-def _call_ollama(prompt):
-    response = requests.post(
-        f'{OLLAMA_URL}/api/generate',
-        json={
-            'model': OLLAMA_MODEL,
-            'prompt': prompt,
-            'stream': False,
-        },
-        timeout=120,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    if isinstance(payload, dict):
-        if 'response' in payload:
-            return str(payload['response'])
-        if 'choices' in payload and payload['choices']:
-            return str(payload['choices'][0].get('content', payload))
-    return str(payload)
-
-
-def answer_question(query, top_k=5):
-    results = _retrieve_chunks(query, top_k=top_k)
-    prompt = _build_prompt(query, results)
-
-    print('\n[RAG] Query:', query)
-    print('[RAG] Retrieved chunks:')
-    for item in results:
-        print(
-            f"  - video {item['number']} | {item['title']} | {int(item['start'])}s-{int(item['end'])}s | score={item['score']:.4f}"
-        )
-
-    try:
-        answer = _call_ollama(prompt)
-    except Exception as exc:
-        print(f'[RAG] Ollama generation failed: {exc}')
+        answer = "I couldn't find relevant snippets in the course materials."
+    else:
         parts = []
+        used = set()
         for r in results:
-            parts.append(f"Video {r['number']} - {r['title']} (around {int(r['start'])}s): {r['text'][:140]}...")
-        answer = (
-            "I could not reach the LLM, so here are the most relevant grounded snippets from the course materials.\n\n"
-            + "\n\n".join(parts)
-            if parts
-            else "I couldn't find relevant snippets in the course materials."
-        )
+            key = (r['number'], r['title'])
+            if key in used:
+                continue
+            used.add(key)
+            parts.append(f"Video {r['number']} – {r['title']} (around {int(r['start'])}s): {r['text'][:140]}...")
+        answer = "\n\n".join(parts)
 
-    print('[RAG] Final answer:')
-    print(answer)
     return answer, results
 
 
