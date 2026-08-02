@@ -1,0 +1,4 @@
+$env:OLLAMA_URL='http://127.0.0.1:11434'
+$env:OLLAMA_MODEL='llama3.2:1b'
+cd RAG-assistance
+python app.py
