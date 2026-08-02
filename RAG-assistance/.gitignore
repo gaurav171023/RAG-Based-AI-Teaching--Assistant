@@ -1,40 +1,56 @@
-# Byte-compiled / optimized / DLL files
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode / cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
-# Distribution / packaging
+# Packaging / build artifacts
 build/
 dist/
 *.egg-info/
+pip-wheel-metadata/
+.eggs/
 
-# Virtual environments
-venv/
-env/
+# Environment variables
 .env
+.env.local
+.env.*.local
 
-# IDEs
+# Logs
+*.log
+logs/
+
+# Local databases
+*.db
+*.sqlite3
+*.db-journal
+
+# IDE / editor
 .vscode/
+.idea/
 *.swp
-*.swn
-Thumbs.db
-.DS_Store
 
-# Audio / video / large data
+# OS files
+.DS_Store
+Thumbs.db
+
+# Media source files (raw pipeline inputs — not needed at runtime)
 audios/
 videos/
 *.mp3
 *.wav
 *.flac
+*.mp4
+*.mov
 
-# sample media folders (don't push)
-RAG-assistance/1758903138109-rag_sample-videos/
-RAG-assistance/1758903342221-rag_all_audios/
-
-
-# Model / vector files (exclude large models, but allow critical embeddings)
-# Note: embeddings.joblib and tfidf_vectorizer.joblib are committed for Render deployment
-# *.joblib
-
-# OneDrive / OS
-.one/ 
+# --- Runtime artifacts: KEEP these tracked, do NOT ignore ---
+# embeddings.joblib and tfidf_vectorizer.joblib are intentionally
+# committed because the live app loads them directly on Render.
+# !embeddings.joblib
+# !tfidf_vectorizer.joblib

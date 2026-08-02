@@ -1,0 +1,15 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+pip
+setuptools
+wheel
+pandas
+scikit-learn
+joblib
+requests
+numpy
+librosa
+soundfile
+Flask
+gunicorn
+gdown
