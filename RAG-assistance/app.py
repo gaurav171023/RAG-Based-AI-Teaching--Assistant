@@ -23,30 +23,30 @@ def home():
 
 @app.post("/ask")
 async def ask(question: str = Form(...)):
+    print("=" * 60)
+    print("POST /ask received")
+    print(question)
+
     try:
+        print("Calling rag_engine.ask()")
         answer, sources = rag_engine.ask(question)
-    except FileNotFoundError:
-        return JSONResponse(
-            {
-                "error": "embeddings.joblib not found. Run: python preprocess_json.py"
-            },
-            status_code=400,
-        )
-    except Exception as e:
-        return JSONResponse(
-            {
-                "error": str(e)
-            },
-            status_code=500,
-        )
+        print("rag_engine.ask() finished")
 
-    return JSONResponse(
-        {
+        return JSONResponse({
             "answer": answer,
-            "sources": sources,
-        }
-    )
+            "sources": sources
+        })
 
+    except Exception as e:
+        import traceback
+
+        print("EXCEPTION:")
+        traceback.print_exc()
+
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
 
 if __name__ == "__main__":
     import uvicorn
