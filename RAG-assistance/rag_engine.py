@@ -24,9 +24,10 @@ HEADERS = {
 
 EMBED_URL = "https://api.jina.ai/v1/embeddings"
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"), timeout=30.0)
 
-_df = None
+_metadata_df = None
+_embedding_matrix = None
 
 
 def embed_texts(texts):
@@ -37,7 +38,7 @@ def embed_texts(texts):
             "model": "jina-embeddings-v3",
             "input": texts
         },
-        timeout=60
+        timeout=30
     )
 
     response.raise_for_status()
@@ -48,24 +49,28 @@ def embed_texts(texts):
 
 
 def load_index():
-    global _df
+    global _metadata_df, _embedding_matrix
 
-    if _df is None:
+    if _metadata_df is None or _embedding_matrix is None:
         print("Loading embeddings.joblib...")
-        _df = joblib.load(EMBEDDINGS_FILE)
-        print(f"Loaded {_df.shape[0]} chunks")
+        df = joblib.load(EMBEDDINGS_FILE)
 
-    return _df
+        _metadata_df = df.drop(columns=["embedding"]).reset_index(drop=True)
+        _embedding_matrix = np.asarray(df["embedding"].to_list(), dtype=np.float32)
+
+        print(f"Loaded {_metadata_df.shape[0]} chunks")
+
+    return _metadata_df, _embedding_matrix
 
 
 def retrieve(query, top_k=5):
 
-    df = load_index()
+    df, embedding_matrix = load_index()
 
-    query_embedding = embed_texts([query])[0]
+    query_embedding = np.asarray(embed_texts([query])[0], dtype=np.float32)
 
     similarities = cosine_similarity(
-        np.vstack(df["embedding"]),
+        embedding_matrix,
         [query_embedding]
     ).flatten()
 
