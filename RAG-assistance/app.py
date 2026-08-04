@@ -1,4 +1,5 @@
 import os
+
 from fastapi import FastAPI, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,8 +8,12 @@ import rag_engine
 
 app = FastAPI(title="RAG Teaching Assistant")
 
+# Static frontend
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/videos", StaticFiles(directory="videos"), name="videos")
+
+# Mount videos only if the folder exists
+if os.path.isdir("videos"):
+    app.mount("/videos", StaticFiles(directory="videos"), name="videos")
 
 
 @app.get("/")
@@ -22,13 +27,33 @@ async def ask(question: str = Form(...)):
         answer, sources = rag_engine.ask(question)
     except FileNotFoundError:
         return JSONResponse(
-            {"error": "embeddings.joblib not found. Run: python preprocess_json.py"},
+            {
+                "error": "embeddings.joblib not found. Run: python preprocess_json.py"
+            },
             status_code=400,
         )
-    return JSONResponse({"answer": answer, "sources": sources})
+    except Exception as e:
+        return JSONResponse(
+            {
+                "error": str(e)
+            },
+            status_code=500,
+        )
+
+    return JSONResponse(
+        {
+            "answer": answer,
+            "sources": sources,
+        }
+    )
 
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=port,
+    )
