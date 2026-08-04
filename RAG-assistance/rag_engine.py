@@ -1,15 +1,16 @@
 """
 Core RAG logic for the video teaching assistant.
-Uses precomputed embeddings.joblib and Groq for answering.
-The SentenceTransformer model is loaded lazily on the first request.
+Uses precomputed Jina embeddings and Groq.
+No SentenceTransformer or PyTorch required.
 """
 
 import os
 import joblib
+import requests
 import numpy as np
+
 from dotenv import load_dotenv
 from groq import Groq
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
@@ -18,28 +19,21 @@ COURSE_NAME = "Web Development"
 EMBEDDINGS_FILE = "embeddings.joblib"
 GROQ_MODEL = "llama-3.1-8b-instant"
 
-embedder = None
+JINA_API_KEY = os.getenv("JINA_API_KEY")
+
+if not JINA_API_KEY:
+    raise ValueError("JINA_API_KEY not found")
+
+HEADERS = {
+    "Authorization": f"Bearer {JINA_API_KEY}",
+    "Content-Type": "application/json",
+}
+
+EMBED_URL = "https://api.jina.ai/v1/embeddings"
+
 _df = None
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-
-def get_embedder():
-    global embedder
-
-    if embedder is None:
-        print("=" * 60)
-        print("Loading SentenceTransformer model...")
-        embedder = SentenceTransformer("all-MiniLM-L6-v2")
-        print("SentenceTransformer loaded successfully")
-        print("=" * 60)
-
-    return embedder
-
-
-def embed_texts(text_list):
-    model = get_embedder()
-    return model.encode(text_list, normalize_embeddings=True)
 
 
 def load_index():
@@ -55,26 +49,43 @@ def load_index():
     return _df
 
 
+def embed_query(query):
+
+    response = requests.post(
+        EMBED_URL,
+        headers=HEADERS,
+        json={
+            "model": "jina-embeddings-v3",
+            "input": [query],
+        },
+        timeout=60,
+    )
+
+    response.raise_for_status()
+
+    return response.json()["data"][0]["embedding"]
+
+
 def retrieve(query, top_k=5):
-    print("Retrieving relevant chunks...")
+
+    print("Embedding query...")
 
     df = load_index()
 
-    query_embedding = embed_texts([query])[0]
+    query_embedding = embed_query(query)
 
     similarities = cosine_similarity(
         np.vstack(df["embedding"]),
-        [query_embedding]
+        [query_embedding],
     ).flatten()
 
     top_indices = similarities.argsort()[::-1][:top_k]
-
-    print("Retrieval complete")
 
     return df.loc[top_indices]
 
 
 def build_prompt(query, results_df):
+
     context = results_df[
         ["title", "number", "start", "end", "text"]
     ].to_json(orient="records")
@@ -94,28 +105,26 @@ User question:
 Answer naturally.
 
 Mention:
+
 - Which video teaches it.
 - Approximate timestamps.
 - Guide the student to the correct video.
 
-If the question is unrelated to the course,
-say you can only answer questions related to this course.
+If unrelated to the course,
+say you can only answer course-related questions.
 """
 
 
 def ask(query, top_k=5):
+
     print("=" * 60)
-    print("STEP 1: ask() called")
+    print("Retrieving...")
 
     results_df = retrieve(query, top_k)
 
-    print("STEP 2: Retrieval finished")
-
     prompt = build_prompt(query, results_df)
 
-    print("STEP 3: Prompt built")
-
-    print("STEP 4: Calling Groq...")
+    print("Calling Groq...")
 
     response = groq_client.chat.completions.create(
         model=GROQ_MODEL,
@@ -127,8 +136,6 @@ def ask(query, top_k=5):
         ],
         temperature=0.3,
     )
-
-    print("STEP 5: Groq response received")
 
     answer = response.choices[0].message.content
 
@@ -144,7 +151,7 @@ def ask(query, top_k=5):
             }
         )
 
-    print("STEP 6: Returning answer")
+    print("Done.")
     print("=" * 60)
 
     return answer, sources

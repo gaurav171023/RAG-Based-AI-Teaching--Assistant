@@ -1,55 +1,164 @@
-"""
-Reads every transcript-chunk json file in json/, embeds each chunk's text,
-and saves the result as embeddings.joblib for rag_engine.py to load.
-
-You already have your json/ folder populated, so you just need to run:
-    python preprocess_json.py
-"""
-
-import glob
-import json
 import os
-import pandas as pd
+import json
+import time
 import joblib
+import requests
+import pandas as pd
+from dotenv import load_dotenv
 
-from rag_engine import embed_texts
+load_dotenv()
 
-JSON_DIR = "json"
+JINA_API_KEY = os.getenv("JINA_API_KEY")
 
+if not JINA_API_KEY:
+    raise ValueError("JINA_API_KEY not found.")
 
-def load_chunks():
-    chunks = []
+HEADERS = {
+    "Authorization": f"Bearer {JINA_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-    for path in glob.glob(os.path.join(JSON_DIR, "*.json")):
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+EMBED_URL = "https://api.jina.ai/v1/embeddings"
 
-            if isinstance(data, dict) and "chunks" in data:
-                chunks.extend(data["chunks"])
-            elif isinstance(data, list):
-                chunks.extend(data)
-            else:
-                print(f"Skipping unexpected JSON format: {path}")
+json_folder = "json"
 
-    return chunks
+records = []
 
+# ----------------------------
+# Read every transcript
+# ----------------------------
 
-def main():
-    chunks = load_chunks()
-    if not chunks:
-        print(f"No chunks found in {JSON_DIR}/. Add your transcript json files there first.")
-        return
+for filename in sorted(os.listdir(json_folder)):
 
-    df = pd.DataFrame(chunks)
-    print(f"Loaded {len(df)} chunks from {JSON_DIR}/")
+    if not filename.endswith(".json"):
+        continue
 
-    texts = df["text"].tolist()
-    embeddings = embed_texts(texts)
-    df["embedding"] = list(embeddings)
+    path = os.path.join(json_folder, filename)
 
-    joblib.dump(df, "embeddings.joblib")
-    print(f"Saved embeddings.joblib ({len(df)} chunks)")
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
+    for chunk in data["chunks"]:
 
-if __name__ == "__main__":
-    main()
+        records.append({
+            "title": chunk["title"],
+            "number": chunk["number"],
+            "start": chunk["start"],
+            "end": chunk["end"],
+            "text": chunk["text"]
+        })
+
+print(f"Loaded {len(records)} chunks")
+
+# ----------------------------
+# Resume support
+# ----------------------------
+
+SAVE_FILE = "embeddings_progress.joblib"
+
+if os.path.exists(SAVE_FILE):
+
+    df = joblib.load(SAVE_FILE)
+
+    embeddings = list(df["embedding"])
+
+    start_index = len(embeddings)
+
+    print(f"Resuming from {start_index}")
+
+else:
+
+    embeddings = []
+
+    start_index = 0
+
+texts = [r["text"] for r in records]
+
+BATCH_SIZE = 32
+
+# ----------------------------
+# Embed
+# ----------------------------
+
+for i in range(start_index, len(texts), BATCH_SIZE):
+
+    batch = texts[i:i+BATCH_SIZE]
+
+    success = False
+
+    for attempt in range(5):
+
+        try:
+
+            response = requests.post(
+
+                EMBED_URL,
+
+                headers=HEADERS,
+
+                json={
+                    "model":"jina-embeddings-v3",
+                    "input":batch
+                },
+
+                timeout=120
+            )
+
+            if response.status_code == 200:
+
+                success = True
+
+                break
+
+            print(
+                f"Retry {attempt+1}/5 "
+                f"Status {response.status_code}"
+            )
+
+            time.sleep(5)
+
+        except Exception as e:
+
+            print(e)
+
+            time.sleep(5)
+
+    if not success:
+
+        print("Stopping safely...")
+
+        break
+
+    data = response.json()["data"]
+
+    embeddings.extend(
+        [x["embedding"] for x in data]
+    )
+
+    temp = pd.DataFrame(records[:len(embeddings)])
+
+    temp["embedding"] = embeddings
+
+    joblib.dump(temp, SAVE_FILE)
+
+    print(f"Embedded {len(embeddings)}/{len(records)}")
+
+# ----------------------------
+# Finished
+# ----------------------------
+
+if len(embeddings)==len(records):
+
+    df = pd.DataFrame(records)
+
+    df["embedding"] = embeddings
+
+    joblib.dump(df,"embeddings.joblib")
+
+    print("Done!")
+
+    os.remove(SAVE_FILE)
+
+else:
+
+    print("Run again to continue.")
