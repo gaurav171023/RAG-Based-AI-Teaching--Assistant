@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>RAG Teaching Assistant</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; background: #f7f7f9; }
+  h1 { font-size: 1.5rem; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+  textarea { width: 100%; padding: 8px; margin-top: 8px; box-sizing: border-box; font-family: inherit; }
+  button { background: #2563eb; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+  button:hover { background: #1d4ed8; }
+  #status { color: #555; font-size: 0.9rem; margin-top: 12px; }
+  #answer { margin-top: 10px; white-space: pre-wrap; line-height: 1.5; }
+  .source { display: block; margin-top: 8px; padding: 8px 10px; background: #f0f4ff; border-radius: 6px; text-decoration: none; color: #1d4ed8; font-size: 0.9rem; }
+  .source:hover { background: #e0e9ff; }
+</style>
+</head>
+<body>
+
+<h1>📘 RAG Teaching Assistant</h1>
+<p style="color:#666; font-size:0.9rem;">Ask a question about the course — the assistant finds the right video and timestamp.</p>
+
+<div class="card">
+  <textarea id="question" rows="3" placeholder="e.g. Where is CSS introduced?"></textarea>
+  <button onclick="askQuestion()">Ask</button>
+  <div id="status"></div>
+  <div id="answer"></div>
+  <div id="sources"></div>
+</div>
+
+<script>
+async function askQuestion() {
+  const question = document.getElementById("question").value.trim();
+  const statusEl = document.getElementById("status");
+  const answerEl = document.getElementById("answer");
+  const sourcesEl = document.getElementById("sources");
+  if (!question) { statusEl.textContent = "Type a question first."; return; }
+
+  statusEl.textContent = "Thinking...";
+  answerEl.textContent = "";
+  sourcesEl.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("question", question);
+
+  const res = await fetch("/ask", { method: "POST", body: formData });
+  const data = await res.json();
+
+  if (data.error) {
+    statusEl.textContent = data.error;
+    return;
+  }
+
+  statusEl.textContent = "";
+  answerEl.textContent = data.answer;
+
+  data.sources.forEach(src => {
+    const mins = Math.floor(src.start / 60);
+    const secs = Math.floor(src.start % 60).toString().padStart(2, "0");
+    const link = document.createElement("a");
+    link.className = "source";
+    link.href = `/videos/${encodeURIComponent(src.title)}.mp4#t=${Math.floor(src.start)}`;
+    link.target = "_blank";
+    link.textContent = `▶ ${src.title} (Video ${src.number}) — ${mins}:${secs}`;
+    sourcesEl.appendChild(link);
+  });
+}
+</script>
+
+</body>
+</html>

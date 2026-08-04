@@ -1,54 +1,55 @@
-import requests
-import os
+"""
+Reads every transcript-chunk json file in json/, embeds each chunk's text,
+and saves the result as embeddings.joblib for rag_engine.py to load.
+
+You already have your json/ folder populated, so you just need to run:
+    python preprocess_json.py
+"""
+
+import glob
 import json
-import numpy as np
+import os
 import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
 import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
 
-def create_embedding(text_list):
-    # https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
-    r = requests.post("http://localhost:11434/api/embed", json={
-        "model": "bge-m3",
-        "input": text_list
-    })
+from rag_engine import embed_texts
 
-    embedding = r.json()["embeddings"] 
-    return embedding
+JSON_DIR = "json"
 
 
-jsons = os.listdir("jsons")  # List all the jsons 
-my_dicts = []
-chunk_id = 0
+def load_chunks():
+    chunks = []
 
-if os.path.exists('embeddings.joblib') and '--force' not in os.sys.argv:
-    print("embeddings.joblib already exists — skipping preprocessing. Pass --force to regenerate.")
-    raise SystemExit(0)
+    for path in glob.glob(os.path.join(JSON_DIR, "*.json")):
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-for json_file in jsons:
-    with open(f"jsons/{json_file}") as f:
-        content = json.load(f)
-    print(f"Creating Embeddings for {json_file}")
-    texts = [c['text'] for c in content['chunks']]
-    # Try Ollama embeddings first, fall back to local TF-IDF
-    try:
-        embeddings = create_embedding(texts)
-    except Exception:
-        print("Ollama embeddings not available, falling back to local TF-IDF embeddings")
-        vec = TfidfVectorizer()
-        tfidf = vec.fit_transform(texts)
-        embeddings = [tfidf[i].toarray().flatten() for i in range(tfidf.shape[0])]
-        # save the vectorizer for reuse (optional)
-        joblib.dump(vec, 'tfidf_vectorizer.joblib')
-       
-    for i, chunk in enumerate(content['chunks']):
-        chunk['chunk_id'] = chunk_id
-        chunk['embedding'] = embeddings[i]
-        chunk_id += 1
-        my_dicts.append(chunk) 
+            if isinstance(data, dict) and "chunks" in data:
+                chunks.extend(data["chunks"])
+            elif isinstance(data, list):
+                chunks.extend(data)
+            else:
+                print(f"Skipping unexpected JSON format: {path}")
 
-df = pd.DataFrame.from_records(my_dicts)
-# Save this dataframe
-joblib.dump(df, 'embeddings.joblib')
+    return chunks
 
+
+def main():
+    chunks = load_chunks()
+    if not chunks:
+        print(f"No chunks found in {JSON_DIR}/. Add your transcript json files there first.")
+        return
+
+    df = pd.DataFrame(chunks)
+    print(f"Loaded {len(df)} chunks from {JSON_DIR}/")
+
+    texts = df["text"].tolist()
+    embeddings = embed_texts(texts)
+    df["embedding"] = list(embeddings)
+
+    joblib.dump(df, "embeddings.joblib")
+    print(f"Saved embeddings.joblib ({len(df)} chunks)")
+
+
+if __name__ == "__main__":
+    main()

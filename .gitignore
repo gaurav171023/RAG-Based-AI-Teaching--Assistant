@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Python caches
+.pytest_cache/
+.mypy_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Media and generated assets
+videos/
+audio/
+RAG-assistance/videos/
+RAG-assistance/audio/
+
+# Keep required project files tracked
+!requirements.txt
+!json/
+!static/
+!embeddings.joblib

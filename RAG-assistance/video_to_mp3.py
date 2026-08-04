@@ -1,41 +1,31 @@
-# Converts the videos to mp3
+"""
+Optional: extracts audio from every video in videos/ into audio/ as mp3.
+You only need this if you add new raw video files later — since you already
+have json/ populated, you can skip this and audio_to_json.py entirely.
+
+Requires: pip install moviepy
+"""
+
 import os
-import subprocess
-import shutil
+from moviepy import VideoFileClip
 
-def find_videos_dir():
-    # prefer 'videos' if present
-    if os.path.isdir('videos'):
-        return 'videos'
-    # otherwise pick a directory that looks like it contains sample videos
-    for name in os.listdir('.'):
-        if os.path.isdir(name) and ('video' in name.lower() or 'videos' in name.lower() or 'webm' in name.lower()):
-            return name
-    return 'videos'
+VIDEO_DIR = "videos"
+AUDIO_DIR = "audio"
 
-VIDEOS_DIR = find_videos_dir()
-AUDIOS_DIR = 'audios'
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
-os.makedirs(AUDIOS_DIR, exist_ok=True)
 
-if not os.path.isdir(VIDEOS_DIR):
-    print(f"Videos directory '{VIDEOS_DIR}' not found. Please create it and add your .webm/.mp4 files.")
-    raise SystemExit(1)
+def convert_all():
+    for filename in os.listdir(VIDEO_DIR):
+        if not filename.lower().endswith((".mp4", ".mkv", ".mov")):
+            continue
+        video_path = os.path.join(VIDEO_DIR, filename)
+        audio_path = os.path.join(AUDIO_DIR, os.path.splitext(filename)[0] + ".mp3")
+        print(f"Converting {filename} -> {audio_path}")
+        clip = VideoFileClip(video_path)
+        clip.audio.write_audiofile(audio_path)
+        clip.close()
 
-if shutil.which('ffmpeg') is None:
-    print('ffmpeg not found in PATH. Please install ffmpeg before running this script.')
-    raise SystemExit(1)
 
-files = os.listdir(VIDEOS_DIR)
-for file in files:
-    # best-effort parsing; keep original behavior if format matches
-    try:
-        tutorial_number = file.split(' [')[0].split(' #')[1]
-    except Exception:
-        tutorial_number = ''
-    file_name = file.split(' ｜ ')[0] if ' ｜ ' in file else os.path.splitext(file)[0]
-    out_name = f"{tutorial_number}_{file_name}.mp3" if tutorial_number else f"{file_name}.mp3"
-    print('Converting:', file, '->', out_name)
-    src = os.path.join(VIDEOS_DIR, file)
-    dst = os.path.join(AUDIOS_DIR, out_name)
-    subprocess.run(['ffmpeg', '-y', '-i', src, dst])
+if __name__ == "__main__":
+    convert_all()
