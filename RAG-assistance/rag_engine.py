@@ -1,8 +1,7 @@
 """
 Core RAG logic for the video teaching assistant.
 Uses precomputed embeddings.joblib and Groq for answering.
-The SentenceTransformer model is loaded lazily on the first request
-to reduce startup memory usage.
+The SentenceTransformer model is loaded lazily on the first request.
 """
 
 import os
@@ -19,7 +18,6 @@ COURSE_NAME = "Web Development"
 EMBEDDINGS_FILE = "embeddings.joblib"
 GROQ_MODEL = "llama-3.1-8b-instant"
 
-# Lazy-loaded globals
 embedder = None
 _df = None
 
@@ -27,11 +25,15 @@ groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 def get_embedder():
-    """Load the embedding model only when needed."""
     global embedder
+
     if embedder is None:
-        print("Loading embedding model...")
+        print("=" * 60)
+        print("Loading SentenceTransformer model...")
         embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        print("SentenceTransformer loaded successfully")
+        print("=" * 60)
+
     return embedder
 
 
@@ -41,15 +43,21 @@ def embed_texts(text_list):
 
 
 def load_index():
-    """Load embeddings.joblib only once."""
     global _df
+
     if _df is None:
-        print("Loading embeddings index...")
+        print("=" * 60)
+        print("Loading embeddings.joblib...")
         _df = joblib.load(EMBEDDINGS_FILE)
+        print(f"Loaded {_df.shape[0]} chunks")
+        print("=" * 60)
+
     return _df
 
 
 def retrieve(query, top_k=5):
+    print("Retrieving relevant chunks...")
+
     df = load_index()
 
     query_embedding = embed_texts([query])[0]
@@ -60,6 +68,8 @@ def retrieve(query, top_k=5):
     ).flatten()
 
     top_indices = similarities.argsort()[::-1][:top_k]
+
+    print("Retrieval complete")
 
     return df.loc[top_indices]
 
@@ -94,20 +104,31 @@ say you can only answer questions related to this course.
 
 
 def ask(query, top_k=5):
+    print("=" * 60)
+    print("STEP 1: ask() called")
+
     results_df = retrieve(query, top_k)
 
+    print("STEP 2: Retrieval finished")
+
     prompt = build_prompt(query, results_df)
+
+    print("STEP 3: Prompt built")
+
+    print("STEP 4: Calling Groq...")
 
     response = groq_client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[
             {
                 "role": "user",
-                "content": prompt
+                "content": prompt,
             }
         ],
         temperature=0.3,
     )
+
+    print("STEP 5: Groq response received")
 
     answer = response.choices[0].message.content
 
@@ -122,5 +143,8 @@ def ask(query, top_k=5):
                 "end": float(row["end"]),
             }
         )
+
+    print("STEP 6: Returning answer")
+    print("=" * 60)
 
     return answer, sources
