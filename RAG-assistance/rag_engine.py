@@ -1,14 +1,7 @@
-"""
-Core RAG logic for the video teaching assistant.
-Uses precomputed Jina embeddings and Groq.
-No SentenceTransformer or PyTorch required.
-"""
-
 import os
 import joblib
 import requests
 import numpy as np
-
 from dotenv import load_dotenv
 from groq import Groq
 from sklearn.metrics.pairwise import cosine_similarity
@@ -26,57 +19,54 @@ if not JINA_API_KEY:
 
 HEADERS = {
     "Authorization": f"Bearer {JINA_API_KEY}",
-    "Content-Type": "application/json",
+    "Content-Type": "application/json"
 }
 
 EMBED_URL = "https://api.jina.ai/v1/embeddings"
 
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 _df = None
 
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+def embed_texts(texts):
+    response = requests.post(
+        EMBED_URL,
+        headers=HEADERS,
+        json={
+            "model": "jina-embeddings-v3",
+            "input": texts
+        },
+        timeout=60
+    )
+
+    response.raise_for_status()
+
+    data = response.json()["data"]
+
+    return np.array([x["embedding"] for x in data])
 
 
 def load_index():
     global _df
 
     if _df is None:
-        print("=" * 60)
         print("Loading embeddings.joblib...")
         _df = joblib.load(EMBEDDINGS_FILE)
         print(f"Loaded {_df.shape[0]} chunks")
-        print("=" * 60)
 
     return _df
 
 
-def embed_query(query):
-
-    response = requests.post(
-        EMBED_URL,
-        headers=HEADERS,
-        json={
-            "model": "jina-embeddings-v3",
-            "input": [query],
-        },
-        timeout=60,
-    )
-
-    response.raise_for_status()
-
-    return response.json()["data"][0]["embedding"]
-
-
 def retrieve(query, top_k=5):
-
-    print("Embedding query...")
 
     df = load_index()
 
-    query_embedding = embed_query(query)
+    query_embedding = embed_texts([query])[0]
 
     similarities = cosine_similarity(
         np.vstack(df["embedding"]),
-        [query_embedding],
+        [query_embedding]
     ).flatten()
 
     top_indices = similarities.argsort()[::-1][:top_k]
@@ -93,14 +83,14 @@ def build_prompt(query, results_df):
     return f"""
 I am teaching a {COURSE_NAME} course.
 
-Here are subtitle chunks:
+Video subtitle chunks:
 
 {context}
 
---------------------------------
+----------------------------
 
-User question:
-"{query}"
+User Question:
+{query}
 
 Answer naturally.
 
@@ -111,7 +101,7 @@ Mention:
 - Guide the student to the correct video.
 
 If unrelated to the course,
-say you can only answer course-related questions.
+say you can only answer questions related to this course.
 """
 
 
@@ -122,16 +112,16 @@ def ask(query, top_k=5):
 
     results_df = retrieve(query, top_k)
 
-    prompt = build_prompt(query, results_df)
-
     print("Calling Groq...")
+
+    prompt = build_prompt(query, results_df)
 
     response = groq_client.chat.completions.create(
         model=GROQ_MODEL,
         messages=[
             {
                 "role": "user",
-                "content": prompt,
+                "content": prompt
             }
         ],
         temperature=0.3,
@@ -150,8 +140,5 @@ def ask(query, top_k=5):
                 "end": float(row["end"]),
             }
         )
-
-    print("Done.")
-    print("=" * 60)
 
     return answer, sources
