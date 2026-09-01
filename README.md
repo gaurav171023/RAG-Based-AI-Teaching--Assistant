@@ -1,11 +1,8 @@
 # Video RAG Teaching Assistant
-
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.11.9-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Render](https://img.shields.io/badge/Deploy-Render-46E3B7?logo=render&logoColor=white)](https://render.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
 FastAPI-based video teaching assistant that answers course questions from transcript chunks using semantic retrieval and Groq-generated responses with timestamps.
+
+run at http://127.0.0.1:8000
+
 
 ## Table of Contents
 
@@ -160,6 +157,9 @@ python preprocess_json.py
 ```
 
 ### Run the app
+
+cd C:\RAG\RAG-Project\RAG-assistance
+
 
 ```bash
 python app.py
