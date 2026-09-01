@@ -8,9 +8,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
 
+
 COURSE_NAME = "Web Development"
 EMBEDDINGS_FILE = "embeddings.joblib"
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = "openai/gpt-oss-20b"
 
 JINA_API_KEY = os.getenv("JINA_API_KEY")
 
